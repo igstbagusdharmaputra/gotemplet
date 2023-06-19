@@ -8,9 +8,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"tmpl/pkg/mustache"
 
 	"github.com/spf13/cobra"
+	"github.com/valyala/fasttemplate"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -41,17 +41,18 @@ var generateCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		context := make([]interface{}, 0)
+		var context map[string]interface{}
+
 		if bindingdataPath != "" {
 			bindingData, err := parseBindingData(bindingdataPath)
 			if err != nil {
 				return err
 			}
-			context = append(context, bindingData)
+			context = bindingData
 		}
 		for _, p := range listTemplates {
 			
-			err := renderAndSave(p,templatePath,outputPath,context...)
+			err := renderAndSave(p,templatePath,outputPath,context)
 			if err != nil {
 				return err
 			}
@@ -101,15 +102,15 @@ func listTemplatePath(templatePath string) ([]string, error) {
 	
 	return templatePaths,nil
 }
-func renderAndSave(templateFilePath,templatePath,outputFilePath string, bindingDatas ...interface{}) error {
+func renderAndSave(templateFilePath,templatePath,outputFilePath string, bindingDatas map[string]interface{}) error {
 	
 	templateFilePath = strings.Replace(templateFilePath, filepath.Dir(templatePath), outputFilePath, 1)
-	
-	resultTemplateFilePath, err := mustache.Render(templateFilePath, bindingDatas...)
-	
-	if err != nil {
-		return err
-	}
+	t := fasttemplate.New(templateFilePath, "{{ ", " }}")
+	// resultTemplateFilePath, err := mustache.Render(templateFilePath, bindingDatas...)
+	resultTemplateFilePath := t.ExecuteString(bindingDatas)
+	// if err != nil {
+	// 	return err
+	// }
 	dirPath := filepath.Dir(resultTemplateFilePath)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		//be careful, must be 07xx
@@ -118,7 +119,7 @@ func renderAndSave(templateFilePath,templatePath,outputFilePath string, bindingD
 			return err
 		}
 	}
-	err = os.WriteFile(resultTemplateFilePath, []byte("hi"), 0644)
+	err := os.WriteFile(resultTemplateFilePath, []byte("hi"), 0644)
 	if err != nil {
 		return err
 	}
@@ -143,12 +144,12 @@ func StringStartWith(str string, subStrs []string, caseSensitive bool) (string, 
 	return "", false
 }
 
-func parseBindingData(bindingDataPath string) (interface{}, error) {
+func parseBindingData(bindingDataPath string) (map[string]interface{}, error) {
 	b, err := os.ReadFile(bindingDataPath)
 	if err != nil {
 		return nil, err
 	}
-	var data interface{}
+	var data map[string]interface{}
 	if strings.HasSuffix(strings.ToLower(bindingDataPath), "yaml") {
 		if err := yaml.Unmarshal(b, &data); err != nil {
 			return nil, err
