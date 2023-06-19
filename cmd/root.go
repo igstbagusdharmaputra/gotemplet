@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,9 +9,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/spf13/cobra"
-	"github.com/valyala/fasttemplate"
 	yaml "gopkg.in/yaml.v3"
 )
 
@@ -105,12 +106,19 @@ func listTemplatePath(templatePath string) ([]string, error) {
 func renderAndSave(templateFilePath,templatePath,outputFilePath string, bindingDatas map[string]interface{}) error {
 	
 	templateFilePath = strings.Replace(templateFilePath, filepath.Dir(templatePath), outputFilePath, 1)
-	t := fasttemplate.New(templateFilePath, "{{ ", " }}")
+	// t := fasttemplate.New(templateFilePath, "{{ ", " }}")
 	// resultTemplateFilePath, err := mustache.Render(templateFilePath, bindingDatas...)
-	resultTemplateFilePath := t.ExecuteString(bindingDatas)
+	// resultTemplateFilePath := t.ExecuteString(bindingDatas)
+	var tpl bytes.Buffer
+	t := template.Must(template.New("path").Parse(templateFilePath))
+	if err := t.Execute(&tpl, bindingDatas); err != nil {
+		return err
+	}
+	resultTemplateFilePath := tpl.String()
 	// if err != nil {
 	// 	return err
 	// }
+	
 	dirPath := filepath.Dir(resultTemplateFilePath)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		//be careful, must be 07xx
