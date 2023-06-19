@@ -33,8 +33,8 @@ var generateCmd = &cobra.Command{
 		subTemplatePath, _ := command.GetString("subTemplatePath")
 		bindingdataPath,_ := command.GetString("dataPath")
 		outputPath,_ := command.GetString("outputPath")
-		
-		templatePath, _, _ = getTemplatePath(templatePath,subTemplatePath)	
+
+		templatePath, _, _ = getTemplatePath(templatePath,subTemplatePath)
 		// fmt.Println(path)
 		// fmt.Println(tmpPath)
 		// fmt.Println(repo)
@@ -51,13 +51,15 @@ var generateCmd = &cobra.Command{
 			}
 			context = bindingData
 		}
+
 		for _, p := range listTemplates {
-			
+
 			err := renderAndSave(p,templatePath,outputPath,context)
 			if err != nil {
 				return err
 			}
 		}
+		fmt.Println("finished!")
 		return nil
 	},
 }
@@ -68,47 +70,44 @@ func getTemplatePath(templatePath string, subTemplatePath string) (string, strin
 		return fmt.Sprintf("%s/%s",templatePath, subTemplatePath), "", true
 	}else{
 		return path.Join(templatePath, subTemplatePath), "", false
-		
+
 	}
 }
 
 func listTemplatePath(templatePath string) ([]string, error) {
 	templatePaths := make([]string,0)
 	pathInfo, err := os.Stat(templatePath)
+
 	if err != nil {
-		return nil, err
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("path does not exist - %s", templatePath)
+		}
 	}
 	if pathInfo.IsDir() {
-		
 		dataPathInfo, err := os.ReadDir(templatePath)
 		if err != nil {
 			return nil, err
 		}
-		
 		for _, data := range dataPathInfo {
-			
 			dataPaths, err := listTemplatePath(path.Join(templatePath, data.Name()))
-			
 			if err != nil {
 				return nil, err
 			}
-			
 			templatePaths = append(templatePaths, dataPaths...)
-			
 		}
 	}else{
-		templatePaths = append(templatePaths, templatePath)
-		
+		templatePaths = append(templatePaths,templatePath)
 	}
-	
 	return templatePaths,nil
 }
 func renderAndSave(templateFilePath,templatePath,outputFilePath string, bindingDatas map[string]interface{}) error {
-	
+	// parse template file
+	text, err := template.ParseFiles(templateFilePath)
+	if err != nil {
+		return err
+	}
 	templateFilePath = strings.Replace(templateFilePath, filepath.Dir(templatePath), outputFilePath, 1)
-	// t := fasttemplate.New(templateFilePath, "{{ ", " }}")
-	// resultTemplateFilePath, err := mustache.Render(templateFilePath, bindingDatas...)
-	// resultTemplateFilePath := t.ExecuteString(bindingDatas)
+
 	var tpl bytes.Buffer
 	t := template.Must(template.New("path").Parse(templateFilePath))
 	if err := t.Execute(&tpl, bindingDatas); err != nil {
@@ -118,7 +117,7 @@ func renderAndSave(templateFilePath,templatePath,outputFilePath string, bindingD
 	// if err != nil {
 	// 	return err
 	// }
-	
+
 	dirPath := filepath.Dir(resultTemplateFilePath)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		//be careful, must be 07xx
@@ -127,11 +126,18 @@ func renderAndSave(templateFilePath,templatePath,outputFilePath string, bindingD
 			return err
 		}
 	}
-	err := os.WriteFile(resultTemplateFilePath, []byte("hi"), 0644)
+
+	f, err := os.Create(resultTemplateFilePath)
+    if err != nil {
+        return err
+    }
+	
+    defer f.Close()
+	err = text.Execute(f, bindingDatas)
 	if err != nil {
 		return err
 	}
-	fmt.Println(resultTemplateFilePath)
+
 	return nil
 }
 func StringStartWith(str string, subStrs []string, caseSensitive bool) (string, bool) {
