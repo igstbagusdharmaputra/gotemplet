@@ -1,2 +1,3 @@
 appname: {{ .appname }}
 env: {{ .env }}
+url: {{ env "url" "null" }}

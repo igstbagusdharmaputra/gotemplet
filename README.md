@@ -1,29 +1,29 @@
 # Template Generator CLI (`gotemplet`)
 
 ## Overview
-`gotemplet` is a CLI tool that clones a Git repository, processes template files, and renames files/directories based on template expressions.
+`gotemplet` is a CLI tool that clones a Git repository, processes template files, and renames files/directories based on template expressions. It also supports environment variables in templates.
 
 ## Installation
 To install, clone this repository and build the executable:
 
 ```sh
 git clone <repository-url>
-cd tmpl
-go build -o tmpl
+cd gotemplet
+go build -o gotemplet
 ```
 
 ## Usage
 
 ### Generate Template-Based Files
 ```sh
-./tmpl generate --templatePath <repo-url-or-local-dir> \
-               --subTemplatePath <sub-dir> \
-               --dataPath <data-file> \
-               --outputPath <output-dir> \
-               --branch <branch-name> \
-               --gitUser <username> \
-               --gitPass <password> \
-               --sshKeyPath <ssh-key>
+./gotemplet generate --templatePath <repo-url-or-local-dir> \
+                     --subTemplatePath <sub-dir> \
+                     --dataPath <data-file> \
+                     --outputPath <output-dir> \
+                     --branch <branch-name> \
+                     --gitUser <username> \
+                     --gitPass <password> \
+                     --sshKeyPath <ssh-key>
 ```
 
 ### Options
@@ -36,21 +36,44 @@ go build -o tmpl
 - `--gitPass` (`-p`): Git password for HTTP authentication.
 - `--sshKeyPath` (`-k`): Path to an SSH private key for authentication.
 
-## Example Usage
-### Using a Local Template Directory
-```sh
-./tmpl generate -t ./templates -d data.yaml -o ./output
+## Using Environment Variables in Templates
+You can use environment variables inside your templates like this:
+
+```yaml
+app_name: "{{ env `APP_NAME` `default-app` }}"
+port: "{{ env `APP_PORT` `8080` }}"
 ```
 
-### Cloning a Git Repository and Processing Templates
+- If `APP_NAME` is set in the environment, it will use that value.
+- If `APP_NAME` is not set, it will default to `"default-app"`.
+- If `APP_PORT` is not set, it will default to `8080`.
+
+### Example Usage
+#### Using a Local Template Directory
 ```sh
-./tmpl generate -t git@github.com:user/repo.git -d data.json -o ./output -b develop
+./gotemplet generate -t ./templates -d data.yaml -o ./output
 ```
 
-### Using SSH Authentication
+#### Cloning a Git Repository and Processing Templates
 ```sh
-./tmpl generate -t git@github.com:user/repo.git -d data.yaml -o ./output -k ~/.ssh/id_rsa
+./gotemplet generate -t git@github.com:user/repo.git -d data.json -o ./output -b develop
 ```
+
+#### Using SSH Authentication
+```sh
+./gotemplet generate -t git@github.com:user/repo.git -d data.yaml -o ./output -k ~/.ssh/id_rsa
+```
+
+## Handling Missing Environment Variables
+If an environment variable is missing, the program will:
+1. Use the default value if provided.
+2. Return an error if no default is provided.
+
+Example:
+```yaml
+database_url: "{{ env `DATABASE_URL` }}"
+```
+If `DATABASE_URL` is not set, the program will return an error.
 
 ## License
 This project is licensed under the MIT License.

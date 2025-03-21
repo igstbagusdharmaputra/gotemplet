@@ -152,6 +152,16 @@ func loadData() (map[string]interface{}, error) {
 	return data, nil
 }
 
+// Function map for template processing
+var funcMap = template.FuncMap{
+	"env": func(key, def string) string {
+		if val, exists := os.LookupEnv(key); exists {
+			return val
+		}
+		return def
+	},
+}
+
 func processTemplates() error {
 	data, err := loadData()
 	if err != nil {
@@ -185,7 +195,7 @@ func processPath(oldPath, templateDir, outputDir string, data map[string]interfa
 	relPath, _ := filepath.Rel(templateDir, oldPath)
 
 	var buf bytes.Buffer
-	tmpl, err := template.New("path").Parse(relPath)
+	tmpl, err := template.New("path").Funcs(funcMap).Parse(relPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse path template: %w", err)
 	}
@@ -205,7 +215,7 @@ func renderFile(src, dst string, data map[string]interface{}) error {
 		return fmt.Errorf("failed to read file: %w", err)
 	}
 
-	tmpl, err := template.New(filepath.Base(src)).Parse(string(content))
+	tmpl, err := template.New(filepath.Base(src)).Funcs(funcMap).Parse(string(content))
 	if err != nil {
 		return fmt.Errorf("failed to parse file template: %w", err)
 	}
